@@ -24,11 +24,15 @@ _ts = TailscaleService()
 
 @router.get("/status", summary="Tailscale daemon status")
 async def tailscale_status(admin: AdminDep):
-    if not await _ts.is_installed():
-        return {"installed": False, "running": False,
-                "message": "Tailscale is not installed. Run: curl -fsSL https://tailscale.com/install.sh | sh"}
-    status = await _ts.status()
-    return {"installed": True, **status}
+    try:
+        if not await _ts.is_installed():
+            return {"installed": False, "running": False,
+                    "message": "Tailscale is not installed. Run: curl -fsSL https://tailscale.com/install.sh | sh"}
+        status = await _ts.status()
+        return {"installed": True, **status}
+    except Exception as e:
+        log.error(f"Tailscale status error: {e}")
+        return {"installed": False, "running": False, "message": str(e)}
 
 
 @router.post("/up", summary="Connect to Tailscale")

@@ -227,6 +227,9 @@ if [ ! -f "$ENV_DIR/trarou.env" ]; then
     AP_COUNTRY_CODE="${INPUT_CC:-GB}"
 
     echo ""
+    read -r -p "    Wi-Fi password (leave blank for open network): " AP_PASSPHRASE </dev/tty
+
+    echo ""
     while true; do
         read -rs -p "    Admin password (min 8 chars): " ADMIN_PASS </dev/tty
         echo
@@ -244,6 +247,7 @@ ADMIN_PASSWORD_HASH=$HASH
 AP_INTERFACE=$AP_IFACE
 CLIENT_INTERFACE=$CLIENT_IFACE
 AP_SSID=$AP_SSID
+AP_PASSPHRASE=$AP_PASSPHRASE
 CAPTIVE_PORTAL_IP=10.0.0.1
 AP_COUNTRY_CODE=$AP_COUNTRY_CODE
 FRONTEND_URL=http://10.0.0.1:3000
@@ -290,6 +294,22 @@ if [[ "$INSTALL_TS" =~ ^[Yy]$ ]]; then
     info "Installing Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | bash > /dev/null 2>&1
     ok "Tailscale installed"
+else
+    ok "Skipped"
+fi
+
+# ── [10] Ollama (optional) ──────────────────────────────────────────────────
+step 10 "Ollama AI"
+
+echo ""
+read -r -p "    Install Ollama (local AI)? [y/N] " INSTALL_OLLAMA </dev/tty
+if [[ "$INSTALL_OLLAMA" =~ ^[Yy]$ ]]; then
+    info "Installing Ollama..."
+    curl -fsSL https://ollama.com/install.sh | sh > /dev/null 2>&1
+    ok "Ollama installed"
+    info "Pulling recommended model (gemma2:2b)..."
+    ollama pull gemma2:2b > /dev/null 2>&1 || warn "Model pull failed — run 'ollama pull gemma2:2b' later"
+    ok "AI ready"
 else
     ok "Skipped"
 fi

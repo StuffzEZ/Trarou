@@ -125,15 +125,15 @@ function updateClock() {
    ═══════════════════════════════════════════════ */
 let allMediaFiles = [];
 
-function renderMediaGrid(files) {
+function renderMediaList(files) {
   if (!files || files.length === 0)
     return '<div style="text-align:center;padding:40px 0;color:var(--text-3);font-size:13px">No files</div>';
-  return '<div class="media-grid">' + files.map(f =>
-    '<div class="media-card" onclick="playMedia(\'' + escStr(f.path) + '\')">' +
-      '<div class="media-card-thumb">' + mimeEmoji(f.mime_type) + '</div>' +
-      '<div class="media-card-info">' +
-        '<div class="media-card-name">' + escapeHtml(f.name) + '</div>' +
-        '<div class="media-card-meta">' + formatBytes(f.size_bytes) + '</div>' +
+  return '<div class="row-list">' + files.map(f =>
+    '<div class="row" onclick="playMedia(\'' + escStr(f.path) + '\')" style="cursor:pointer">' +
+      '<div class="row-icon" style="background:var(--surface-3);border-radius:10px;font-size:18px">' + mimeEmoji(f.mime_type) + '</div>' +
+      '<div class="row-body">' +
+        '<div class="row-title" style="font-size:13px">' + escapeHtml(f.name) + '</div>' +
+        '<div class="row-sub">' + formatBytes(f.size_bytes) + '</div>' +
       '</div>' +
     '</div>'
   ).join('') + '</div>';
@@ -149,26 +149,31 @@ function playMedia(path) {
   const file = allMediaFiles.find(f => f.path === path);
   if (!file) return;
   const mime = file.mime_type || '';
-  if (mime.startsWith('video/') || mime.startsWith('audio/')) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;padding:20px;flex-direction:column';
-    overlay.onclick = () => overlay.remove();
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="24" height="24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:8px';
-    closeBtn.onclick = () => overlay.remove();
-    const el = mime.startsWith('video/') ? document.createElement('video') : document.createElement('audio');
-    el.controls = true;
-    el.autoplay = true;
-    el.style.cssText = 'max-width:100%;max-height:90vh;border-radius:12px';
-    el.src = file.url;
-    overlay.appendChild(closeBtn);
-    overlay.appendChild(el);
-    el.onclick = e => e.stopPropagation();
-    document.body.appendChild(overlay);
+  const wrap = document.getElementById('media-player-wrap');
+  const container = document.getElementById('media-player-container');
+
+  if (mime.startsWith('video/')) {
+    container.innerHTML = '<video controls autoplay style="width:100%;display:block" src="' + file.url + '"></video>';
+  } else if (mime.startsWith('audio/')) {
+    container.innerHTML = '<div style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">&#127925;</div><audio controls autoplay style="width:100%" src="' + file.url + '"></audio></div>';
+  } else if (mime.startsWith('image/')) {
+    container.innerHTML = '<img src="' + file.url + '" style="width:100%;display:block">';
   } else {
     window.open(file.url, '_blank');
+    return;
   }
+
+  document.getElementById('media-player-name').textContent = file.name;
+  document.getElementById('media-player-meta').textContent = formatBytes(file.size_bytes) + ' \u00B7 ' + mime;
+  wrap.style.display = 'block';
+}
+
+function closeMediaPlayer() {
+  const container = document.getElementById('media-player-container');
+  const video = container.querySelector('video, audio');
+  if (video) video.pause();
+  container.innerHTML = '';
+  document.getElementById('media-player-wrap').style.display = 'none';
 }
 
 function mediaOpenFolder(folderPath) {
@@ -179,7 +184,7 @@ function mediaOpenFolder(folderPath) {
   document.getElementById('media-folders').innerHTML = '';
   document.getElementById('media-files-section').innerHTML =
     '<div class="section-title">' + escapeHtml(folderPath) + '</div>' +
-    renderMediaGrid(subFiles);
+    renderMediaList(subFiles);
   document.getElementById('media-breadcrumb').style.display = 'block';
 }
 
@@ -241,7 +246,7 @@ async function loadMediaTree(loading, empty, foldersEl, filesEl) {
       const rootFiles = allMediaFiles.filter(f => !f.path.includes('/'));
       if (rootFiles.length > 0) {
         filesEl.innerHTML = '<div class="section-title" style="margin-top:16px">Files</div>' +
-          renderMediaGrid(rootFiles);
+          renderMediaList(rootFiles);
       }
     } catch (err) {
       loading.style.display = 'none';
@@ -353,12 +358,14 @@ let pendingConnectSsid = null;
 
 registerPage('network', {
   show() {
-    this._refreshStatus();
+    refreshNetworkStatus();
     document.getElementById('net-connect-form').style.display = 'none';
     document.getElementById('net-scan-results').innerHTML =
       '<div style="text-align:center;padding:32px 0;color:var(--text-3);font-size:13px">Press Scan to search for networks</div>';
-  },
-  _refreshStatus: async () => {
+  }
+});
+
+async function refreshNetworkStatus() {
     try {
       const data = await apiGet('/network/status');
       document.getElementById('net-ap-ssid').textContent = data.ap_ssid || '—';
@@ -380,8 +387,7 @@ registerPage('network', {
         document.getElementById('net-disconnect-row').style.display = 'none';
       }
     } catch (e) { /* silent */ }
-  }
-});
+}
 
 async function scanNetworks() {
   const results = document.getElementById('net-scan-results');
@@ -517,11 +523,13 @@ let sysInterval;
 registerPage('system', {
   show() {
     updateAdminUI();
-    this._refresh();
-    sysInterval = setInterval(() => this._refresh(), 5000);
+    refreshSystemInfo();
+    sysInterval = setInterval(refreshSystemInfo, 5000);
   },
-  hide() { clearInterval(sysInterval); },
-  _refresh: async () => {
+  hide() { clearInterval(sysInterval); }
+});
+
+async function refreshSystemInfo() {
     try {
       const data = await apiGet('/system/info');
       document.getElementById('sys-hostname').textContent = data.hostname;
@@ -537,8 +545,7 @@ registerPage('system', {
       document.getElementById('sys-uptime').textContent = formatUptime(data.uptime_seconds);
       document.getElementById('sys-load').textContent = data.load_avg.map(v => v.toFixed(2)).join('  ');
     } catch (e) { /* silent */ }
-  }
-});
+}
 
 function formatUptime(s) {
   const d = Math.floor(s / 86400);
@@ -1159,6 +1166,23 @@ async function loadSettings() {
     document.getElementById('set-channel').value = e.AP_CHANNEL || 6;
     document.getElementById('set-country').value = e.AP_COUNTRY_CODE || 'GB';
     document.getElementById('set-tools-only').checked = e.CAPTIVE_PORTAL_TOOLS_ONLY !== false;
+
+    // Load AI models into dropdown
+    var modelSelect = document.getElementById('set-ai-model');
+    try {
+      var aiData = await apiGet('/ai/models');
+      var models = aiData.models || [];
+      modelSelect.innerHTML = '<option value="">Auto (recommended)</option>';
+      models.forEach(function(m) {
+        modelSelect.innerHTML += '<option value="' + m + '">' + m + '</option>';
+      });
+    } catch (e2) { /* silent */ }
+
+    // Load system prompt
+    try {
+      var promptData = await apiGet('/ai/system-prompt');
+      document.getElementById('set-ai-prompt').value = promptData.prompt || '';
+    } catch (e2) { /* silent */ }
   } catch (err) {
     toast('Failed to load settings');
   }
@@ -1177,6 +1201,12 @@ async function saveSettings() {
   if (channel) updates.AP_CHANNEL = channel;
   if (country) updates.AP_COUNTRY_CODE = country;
   updates.CAPTIVE_PORTAL_TOOLS_ONLY = toolsOnly;
+
+  // Save AI settings
+  var aiPrompt = document.getElementById('set-ai-prompt').value.trim();
+  try {
+    await apiPost('/ai/system-prompt', { prompt: aiPrompt });
+  } catch (e2) { /* silent */ }
 
   try {
     var result = await apiPost('/settings', updates);
