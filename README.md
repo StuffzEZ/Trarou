@@ -10,25 +10,25 @@ The recommended hardware is a Raspberry Pi 5 due to it being powerful and portab
 ## Installing
 
 ```bash
-curl -fsSL https://trarou.stufy.qzz.io/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s
 ```
 
-Or if you can't use the URL above/this doesn't work:
+Or with the custom domain:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | bash
+curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s
 ```
 
 ## Uninstalling
 
 ```bash
-curl -fsSL https://trarou.stufy.qzz.io/get.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s -- --uninstall
 ```
 
-Or if you can't use the URL above/this doesn't work:
+Or with the custom domain:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | bash -s -- --uninstall
+curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --uninstall
 ```
 
 ## Features
@@ -38,4 +38,4 @@ curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | 
 - Connect the Trarou to an external network
 - Apps
 - Media
-- Very compatiable
+- Very compatible

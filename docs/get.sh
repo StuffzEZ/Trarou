@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  Trarou — Installer / Uninstaller
-#  Install:  curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | bash
-#  Uninstall: curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | bash -s -- --uninstall
+#  Install:    curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s
+#  Uninstall:  curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s -- --uninstall
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 set -euo pipefail
 
@@ -18,6 +18,12 @@ for arg in "$@"; do
         --uninstall) UNINSTALL=1 ;;
     esac
 done
+
+# ── Auto-elevate to root ─────────────────────────────────────────────────────
+if [ "$EUID" -ne 0 ]; then
+    echo -e "  Need root, re-running with sudo..."
+    exec sudo bash "$0" "$@"
+fi
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -56,12 +62,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
     echo -e "    ${DIM}• Clean up iptables rules${NC}"
     echo ""
 
-    if [ "$EUID" -ne 0 ]; then
-        err "This script needs root."
-        echo -e "  ${DIM}Run: sudo bash get.sh --uninstall${NC}"
-        exit 1
-    fi
-
     read -r -p "  Are you sure? [y/N] " CONFIRM
     if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
         echo -e "\n  ${DIM}Uninstall cancelled.${NC}"
@@ -70,7 +70,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
 
     echo ""
 
-    # Stop services
     info "Stopping services..."
     for svc in trarou trarou-frontend; do
         systemctl stop "$svc" 2>/dev/null || true
@@ -79,14 +78,12 @@ if [ "$UNINSTALL" -eq 1 ]; then
     systemctl daemon-reload 2>/dev/null || true
     ok "Services stopped"
 
-    # Kill processes
     info "Killing Trarou processes..."
     pkill -f 'dnsmasq.*trarou' 2>/dev/null || true
     pkill -f 'hostapd.*trarou' 2>/dev/null || true
     pkill -f 'uvicorn.*app:app' 2>/dev/null || true
     ok "Processes killed"
 
-    # Clean iptables
     info "Cleaning iptables rules..."
     for iface in wlan0 wlan1; do
         iptables -t nat -D PREROUTING -i "$iface" -j TRAROU_PORTAL 2>/dev/null || true
@@ -95,7 +92,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
     iptables -t nat -X TRAROU_PORTAL 2>/dev/null || true
     ok "iptables cleaned"
 
-    # Remove files
     info "Removing installed files..."
     rm -rf "$INSTALL_DIR"
     rm -rf "$ENV_DIR"
@@ -106,7 +102,6 @@ if [ "$UNINSTALL" -eq 1 ]; then
     rm -f /tmp/trarou-*
     ok "Files removed"
 
-    # Unmask system services
     info "Restoring system services..."
     systemctl unmask hostapd 2>/dev/null || true
     systemctl unmask dnsmasq 2>/dev/null || true
@@ -140,12 +135,6 @@ if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
     exit 0
 fi
 echo ""
-
-if [ "$EUID" -ne 0 ]; then
-    err "This script needs root."
-    echo -e "  ${DIM}Run: sudo bash get.sh${NC}"
-    exit 1
-fi
 
 # Get latest release
 info "Checking latest release..."
