@@ -94,17 +94,20 @@ class TailscaleService:
         rc, out, err = await self._run(cmd)
 
         login_url = None
+        from urllib.parse import urlparse
+        trusted_hosts = {"login.tailscale.com", "tailscale.com"}
         for line in (out + err).splitlines():
-            if "https://login.tailscale.com" in line or "https://tailscale.com" in line:
-                match = re.search(r'https://login\.tailscale\.com/\S+', line)
-                if not match:
-                    match = re.search(r'https://tailscale\.com/\S+', line)
-                if match:
-                    url = match.group(0).rstrip('.')
-                    # Validate URL format
-                    if re.match(r'^https://(login\.)?tailscale\.com/[a-zA-Z0-9/_\-?=&%]+$', url):
+            for match in re.finditer(r'https://\S+', line):
+                try:
+                    parsed = urlparse(match.group(0))
+                    if parsed.hostname in trusted_hosts and parsed.scheme == "https":
+                        url = match.group(0).rstrip('.')
                         login_url = url
                         break
+                except Exception:
+                    pass
+            if login_url:
+                break
 
         if login_url:
             return {"status": "needs_auth", "login_url": login_url}

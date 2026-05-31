@@ -117,10 +117,12 @@ class HostapdService:
         # Give the driver time to stabilise
         await asyncio.sleep(0.8)
 
-        # Write hostapd config with restrictive permissions
+        # Write hostapd config with restrictive permissions (atomic create)
         Path(HOSTAPD_CONF).parent.mkdir(parents=True, exist_ok=True)
-        Path(HOSTAPD_CONF).write_text(self._build_conf())
-        os.chmod(HOSTAPD_CONF, 0o600)
+        config_content = self._build_conf()
+        fd = os.open(HOSTAPD_CONF, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            f.write(config_content)
         log.info(f"hostapd config: SSID={settings.AP_SSID}, "
                  f"passphrase={'set' if settings.AP_PASSPHRASE else 'open'}")
 
