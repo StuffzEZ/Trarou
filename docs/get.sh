@@ -61,7 +61,7 @@ if [ "$UNINSTALL" -eq 1 ]; then
     echo -e "    ${DIM}• Clean up iptables rules${NC}"
     echo ""
 
-    read -r -p "  Are you sure? [y/N] " CONFIRM
+    read -r -p "  Are you sure? [y/N] " CONFIRM </dev/tty
     if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
         echo -e "\n  ${DIM}Uninstall cancelled.${NC}"
         exit 0
@@ -127,7 +127,7 @@ echo ""
 echo -e "  This will install Trarou to ${BOLD}/opt/trarou${NC}"
 echo -e "  and set up two systemd services."
 echo ""
-read -r -p "  Continue? [Y/n] " CONFIRM
+read -r -p "  Continue? [Y/n] " CONFIRM </dev/tty
 if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
     echo -e "\n  ${DIM}Installation cancelled.${NC}"
     exit 0

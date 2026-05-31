@@ -206,8 +206,8 @@ else
         echo -e "    ${DIM}[$i]${NC} $IFACE  ${DIM}($MAC)${NC}"
     done
     echo ""
-    read -r -p "    AP interface [${WIFI_IFACES[0]}]: " INPUT_AP
-    read -r -p "    Client interface [${WIFI_IFACES[1]}]: " INPUT_CLIENT
+    read -r -p "    AP interface [${WIFI_IFACES[0]}]: " INPUT_AP </dev/tty
+    read -r -p "    Client interface [${WIFI_IFACES[1]}]: " INPUT_CLIENT </dev/tty
     AP_IFACE="${INPUT_AP:-${WIFI_IFACES[0]}}"
     CLIENT_IFACE="${INPUT_CLIENT:-${WIFI_IFACES[1]}}"
 fi
@@ -220,15 +220,15 @@ if [ ! -f "$ENV_DIR/trarou.env" ]; then
     SUFFIX=$(python3 -c "import random,string; print(''.join(random.choices(string.ascii_lowercase+string.digits,k=6)))")
 
     echo ""
-    read -r -p "    SSID [trarou-$SUFFIX]: " INPUT_SSID
+    read -r -p "    SSID [trarou-$SUFFIX]: " INPUT_SSID </dev/tty
     AP_SSID="${INPUT_SSID:-trarou-$SUFFIX}"
 
-    read -r -p "    Country code [GB]: " INPUT_CC
+    read -r -p "    Country code [GB]: " INPUT_CC </dev/tty
     AP_COUNTRY_CODE="${INPUT_CC:-GB}"
 
     echo ""
     while true; do
-        read -rs -p "    Admin password (min 8 chars): " ADMIN_PASS
+        read -rs -p "    Admin password (min 8 chars): " ADMIN_PASS </dev/tty
         echo
         if [ ${#ADMIN_PASS} -ge 8 ]; then break; fi
         warn "Too short, try again."
@@ -285,7 +285,7 @@ ok "Services running"
 step 9 "Tailscale VPN"
 
 echo ""
-read -r -p "    Install Tailscale? [y/N] " INSTALL_TS
+read -r -p "    Install Tailscale? [y/N] " INSTALL_TS </dev/tty
 if [[ "$INSTALL_TS" =~ ^[Yy]$ ]]; then
     info "Installing Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | bash > /dev/null 2>&1
