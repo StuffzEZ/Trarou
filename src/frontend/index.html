@@ -107,6 +107,24 @@
         </div>
         <span class="app-icon-label">System</span>
       </div>
+      <div class="app-icon" onclick="showPage('ai')">
+        <div class="app-icon-img icon-ai">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <span class="app-icon-label">AI</span>
+      </div>
+      <div class="app-icon" onclick="showPage('shortcuts')">
+        <div class="app-icon-img icon-shortcuts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <span class="app-icon-label">Shortcuts</span>
+      </div>
+      <div class="app-icon" onclick="showPage('tailscale')">
+        <div class="app-icon-img icon-tailscale">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <span class="app-icon-label">VPN</span>
+      </div>
       <div class="app-icon" id="app-admin-login" onclick="showAdminLoginPrompt()">
         <div class="app-icon-img icon-settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -356,6 +374,19 @@
         </div>
       </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">Updates</div>
+      <div class="row-list">
+        <div class="row" id="update-check-row" onclick="checkForUpdates()" style="cursor:pointer">
+          <div class="row-body">
+            <div class="row-title" style="font-size:13px" id="update-status-text">Check for updates</div>
+            <div class="row-sub" id="update-version-text"></div>
+          </div>
+          <div id="update-badge"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -400,6 +431,174 @@
       </div>
       <button class="btn btn-primary btn-full" style="margin-top:8px" id="admin-login-btn" onclick="doAdminLogin()">Unlock</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: AI CHAT ═══════ -->
+<div id="page-ai" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>AI Assistant</h1>
+    <div id="ai-backend-badge" style="margin-left:auto"></div>
+  </div>
+  <div style="padding:0 20px;margin-top:-12px;position:relative;z-index:1">
+    <div id="ai-model-info"></div>
+  </div>
+  <div id="ai-model-mgmt" class="page-content" style="padding-top:8px;display:none"></div>
+  <div class="page-content page-enter" style="display:flex;flex-direction:column;height:calc(100dvh - 80px)">
+    <div id="ai-chat-messages" class="ai-chat-messages">
+      <div class="ai-welcome">
+        <div class="ai-welcome-icon">&#10022;</div>
+        <div class="ai-welcome-title">Trarou AI</div>
+        <div class="ai-welcome-sub">Ask me anything about your travel router -- setup, troubleshooting, networking, or general questions.</div>
+        <div id="ai-quick-prompts" class="ai-quick-prompts">
+          <button class="ai-quick-btn" onclick="setAiPrompt('How do I set up my Trarou router?')">Setup guide</button>
+          <button class="ai-quick-btn" onclick="setAiPrompt('My devices cant connect to the Wi-Fi')">Troubleshoot Wi-Fi</button>
+          <button class="ai-quick-btn" onclick="setAiPrompt('How do I use Tailscale VPN?')">Tailscale help</button>
+        </div>
+      </div>
+    </div>
+    <div class="ai-input-bar">
+      <textarea id="ai-input" class="ai-input" placeholder="Ask something..." rows="1" onkeydown="aiInputKeydown(event)"></textarea>
+      <button id="ai-send-btn" class="ai-send-btn" onclick="sendAiMessage()">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: TAILSCALE ═══════ -->
+<div id="page-tailscale" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Tailscale VPN</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="section-title">Status</div>
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-icon" style="background:linear-gradient(135deg,#0ea5e9,#2563eb)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:16px;height:16px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="row-body">
+            <div class="row-title" style="font-size:13px" id="ts-status-text">Checking...</div>
+            <div class="row-sub" id="ts-status-sub"></div>
+          </div>
+          <div id="ts-status-badge"></div>
+        </div>
+      </div>
+    </div>
+    <div class="section" id="ts-connect-section">
+      <div class="section-title">Connect</div>
+      <div class="glass-2" style="padding:16px">
+        <div class="input-group">
+          <label class="input-label">Auth Key (optional)</label>
+          <input class="input" id="ts-auth-key" type="password" placeholder="Leave blank for browser auth">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" style="flex:1" id="ts-up-btn" onclick="tailscaleUp()">Connect</button>
+          <button class="btn btn-danger" style="flex:1" id="ts-down-btn" onclick="tailscaleDown()" disabled>Disconnect</button>
+        </div>
+      </div>
+    </div>
+    <div class="section" id="ts-login-section" style="display:none">
+      <div class="section-title">Authentication Required</div>
+      <div class="glass-2" style="padding:16px;font-size:13px;color:var(--text-2)">
+        <p>Open this link to authenticate Tailscale:</p>
+        <a id="ts-login-url" href="#" target="_blank" style="color:var(--accent);word-break:break-all;display:block;margin:8px 0"></a>
+      </div>
+    </div>
+    <div class="section" id="ts-exit-section" style="display:none">
+      <div class="section-title">Exit Node</div>
+      <div class="row-list" id="ts-exit-nodes"></div>
+    </div>
+    <div class="section" id="ts-peers-section">
+      <div class="section-title">Devices</div>
+      <div id="ts-peers-list">
+        <div style="text-align:center;padding:32px 0;color:var(--text-3);font-size:13px">Connect to Tailscale to see devices</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: SHORTCUTS ═══════ -->
+<div id="page-shortcuts" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Shortcuts</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Custom Shortcuts</span>
+        <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="showAddShortcut()">+ Add</button>
+      </div>
+      <div id="shortcuts-list" class="row-list"></div>
+    </div>
+    <div id="add-shortcut-form" class="section" style="display:none">
+      <div class="section-title">Add Shortcut</div>
+      <div class="glass-2" style="padding:16px">
+        <div class="input-group">
+          <label class="input-label">Name</label>
+          <input class="input" id="shortcut-name" type="text" placeholder="My App">
+        </div>
+        <div class="input-group">
+          <label class="input-label">URL</label>
+          <input class="input" id="shortcut-url" type="url" placeholder="https://example.com">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Icon (emoji)</label>
+          <input class="input" id="shortcut-icon" type="text" placeholder="&#128241;" maxlength="2">
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-secondary" style="flex:1" onclick="hideAddShortcut()">Cancel</button>
+          <button class="btn btn-primary" style="flex:1" onclick="saveShortcut()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: SETTINGS ═══════ -->
+<div id="page-settings" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Settings</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="section-title">Wi-Fi AP</div>
+      <div class="glass-2" style="padding:16px">
+        <div class="input-group">
+          <label class="input-label">SSID</label>
+          <input class="input" id="set-ssid" type="text" placeholder="Trarou">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Password (blank = open)</label>
+          <input class="input" id="set-passphrase" type="password" placeholder="Leave blank for open network">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Channel</label>
+          <input class="input" id="set-channel" type="number" min="1" max="14" placeholder="6">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Country Code</label>
+          <input class="input" id="set-country" type="text" maxlength="2" placeholder="GB">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Captive Portal</div>
+      <div class="glass-2" style="padding:16px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="set-tools-only" style="width:18px;height:18px">
+          <span style="font-size:13px">Tools-only mode (internet works immediately, tools require login)</span>
+        </label>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveSettings()">Save Settings</button>
+    <button class="btn btn-secondary btn-full" style="margin-top:10px" id="restart-ap-btn" onclick="restartAp()" style="display:none">Restart AP</button>
   </div>
 </div>
 

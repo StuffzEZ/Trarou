@@ -1,16 +1,19 @@
 """
 System router.
 
-GET  /api/system/info        — CPU, memory, disk, uptime
-POST /api/system/reboot      — reboot the device (admin)
-POST /api/system/shutdown    — shut down the device (admin)
-POST /api/system/set-password — change admin password (admin)
+GET  /api/system/info        -- CPU, memory, disk, uptime
+GET  /api/system/update-check -- check for updates on GitHub
+POST /api/system/reboot      -- reboot the device (admin)
+POST /api/system/shutdown    -- shut down the device (admin)
+POST /api/system/set-password -- change admin password (admin)
 """
 
 import asyncio
+import json
 import logging
 import socket
 import time
+from pathlib import Path
 from typing import Annotated
 
 import bcrypt
@@ -24,6 +27,9 @@ from routers.auth import get_current_admin
 log = logging.getLogger(__name__)
 router = APIRouter()
 AdminDep = Annotated[str, Depends(get_current_admin)]
+
+VERSION_FILE = Path("/opt/trarou/backend/version.json")
+GITHUB_REPO = "StuffzEZ/Trarou"
 
 
 @router.get("/info", response_model=SystemInfo, summary="Hardware / OS info")
@@ -43,6 +49,70 @@ async def system_info():
         disk_total_gb=disk.total / 1024 ** 3,
         load_avg=load,
     )
+
+
+@router.get("/update-check", summary="Check for updates from GitHub")
+async def update_check():
+    """
+    Compares local version with latest GitHub release.
+    Returns current version, latest version, and whether an update is available.
+    """
+    # Read local version
+    local_version = "unknown"
+    if VERSION_FILE.exists():
+        try:
+            local_data = json.loads(VERSION_FILE.read_text())
+            local_version = local_data.get("version", "unknown")
+        except Exception:
+            pass
+
+    # Fetch latest release from GitHub
+    try:
+        loop = asyncio.get_event_loop()
+        import urllib.request
+
+        def fetch_latest():
+            req = urllib.request.Request(
+                f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
+                headers={"Accept": "application/vnd.github.v3+json"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return json.loads(r.read())
+
+        latest = await loop.run_in_executor(None, fetch_latest)
+        latest_version = latest.get("tag_name", "unknown").lstrip("v")
+        download_url = None
+        for asset in latest.get("assets", []):
+            if asset.get("name", "").endswith(".zip"):
+                download_url = asset.get("browser_download_url")
+                break
+        release_notes = latest.get("body", "")
+    except Exception as e:
+        log.warning(f"Failed to check for updates: {e}")
+        return {
+            "local_version": local_version,
+            "latest_version": "unknown",
+            "update_available": False,
+            "error": "Could not reach GitHub",
+        }
+
+    # Compare versions
+    update_available = False
+    if local_version != "unknown" and latest_version != "unknown":
+        try:
+            local_parts = [int(x) for x in local_version.split(".")]
+            latest_parts = [int(x) for x in latest_version.split(".")]
+            update_available = latest_parts > local_parts
+        except ValueError:
+            update_available = local_version != latest_version
+
+    return {
+        "local_version": local_version,
+        "latest_version": latest_version,
+        "update_available": update_available,
+        "download_url": download_url,
+        "release_notes": release_notes,
+    }
 
 
 @router.post("/reboot", summary="Reboot device (admin)")

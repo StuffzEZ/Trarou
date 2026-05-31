@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get release tag
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create version.json
+        run: |
+          cat > src/version.json << EOF
+          {
+            "version": "${{ steps.tag.outputs.tag }}",
+            "repo": "${{ github.repository }}"
+          }
+          EOF
+
+      - name: Make scripts executable
+        run: chmod +x src/install.sh docs/get.sh
+
+      - name: Create release zip
+        run: |
+          zip -r trarou-${{ steps.tag.outputs.tag }}.zip \
+            src/ \
+            docs/get.sh \
+            LICENSE \
+            README.md
+
+      - name: Upload zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: trarou-${{ steps.tag.outputs.tag }}.zip

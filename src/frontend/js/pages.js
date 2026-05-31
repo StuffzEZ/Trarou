@@ -635,6 +635,581 @@ registerPage('change-password', {
   }
 });
 
+/* ═══════════════════════════════════════════════
+   PAGE: AI CHAT
+   ═══════════════════════════════════════════════ */
+let aiMessages = [];
+let aiStreaming = false;
+
+registerPage('ai', {
+  async show() {
+    await refreshAiStatus();
+  }
+});
+
+async function refreshAiStatus() {
+  try {
+    var data = await apiGet('/ai/status');
+    var badge = document.getElementById('ai-backend-badge');
+    var backend = data.active_backend;
+    var labels = { ollama: 'Local', browser: 'Browser' };
+    var colors = { ollama: 'green', browser: 'orange' };
+    badge.innerHTML = '<span class="badge badge-' + (colors[backend] || 'orange') + '" style="font-size:11px">' + (labels[backend] || backend) + '</span>';
+
+    // Show model info
+    var models = data.ollama ? data.ollama.models : [];
+    var rec = data.recommendation || {};
+    var modelInfo = document.getElementById('ai-model-info');
+    if (modelInfo) {
+      if (models.length > 0) {
+        modelInfo.innerHTML = '<span style="font-size:11px;color:var(--text-3)">Model: ' + models[0] + '</span>';
+      } else if (rec.recommended) {
+        modelInfo.innerHTML = '<span style="font-size:11px;color:var(--text-3)">Recommended: ' + rec.recommended + ' (' + rec.description + ')</span>' +
+          '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;margin-left:8px" onclick="autoSetupAi()">Install</button>';
+      }
+    }
+
+    // Show model management if admin
+    var mgmt = document.getElementById('ai-model-mgmt');
+    if (mgmt && Auth.isAdmin && models.length > 0) {
+      var html = '<div class="row-list">';
+      models.forEach(function(m) {
+        html += '<div class="row"><div class="row-body"><div class="row-title" style="font-size:13px">' + m + '</div></div>';
+        html += '<div class="row-end" style="cursor:pointer" onclick="deleteAiModel(\'' + m + '\')">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+      mgmt.innerHTML = html;
+      mgmt.style.display = 'block';
+    }
+  } catch (e) { /* silent */ }
+}
+
+async function autoSetupAi() {
+  try {
+    var result = await apiPost('/ai/auto-setup');
+    if (result.status === 'pulling') {
+      toast('Downloading ' + result.model + '...');
+    } else if (result.status === 'already_configured') {
+      toast('Models already installed');
+    }
+    await refreshAiStatus();
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+async function deleteAiModel(model) {
+  if (!confirm('Delete model ' + model + '?')) return;
+  try {
+    await apiDelete('/ai/delete-model/' + encodeURIComponent(model));
+    toast('Model removed');
+    await refreshAiStatus();
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+function clearAiChat() {
+  aiMessages = [];
+  var msgs = document.getElementById('ai-chat-messages');
+  msgs.innerHTML = '<div class="ai-welcome"><div class="ai-welcome-icon">&#10022;</div><div class="ai-welcome-title">Trarou AI</div><div class="ai-welcome-sub">Ask me anything about your travel router.</div></div>';
+}
+
+function setAiPrompt(text) {
+  var input = document.getElementById('ai-input');
+  input.value = text;
+  input.focus();
+  autoResizeTextarea(input);
+}
+
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function aiInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAiMessage();
+  }
+  autoResizeTextarea(e.target);
+}
+
+document.getElementById('ai-input').addEventListener('input', function() {
+  autoResizeTextarea(this);
+});
+
+async function sendAiMessage() {
+  if (aiStreaming) return;
+  var input = document.getElementById('ai-input');
+  var text = input.value.trim();
+  if (!text) return;
+
+  document.getElementById('ai-quick-prompts').style.display = 'none';
+  input.value = '';
+  input.style.height = 'auto';
+
+  var welcome = document.querySelector('.ai-welcome');
+  if (welcome) welcome.remove();
+
+  aiMessages.push({ role: 'user', content: text });
+  renderUserMessage(text);
+
+  var assistantBubble = appendAssistantBubble();
+  aiStreaming = true;
+  document.getElementById('ai-send-btn').disabled = true;
+
+  // Try browser AI first (Chrome 127+ Gemini Nano)
+  if (window.ai && window.ai.languageModel) {
+    try {
+      await streamBrowserAI(text, assistantBubble);
+      return;
+    } catch (e) { /* Fall through to server */ }
+  }
+
+  await streamServerAI(assistantBubble);
+}
+
+async function streamBrowserAI(text, bubble) {
+  var session = await window.ai.languageModel.create({
+    systemPrompt: "You are the Trarou AI assistant. Help users with networking, travel router setup, and troubleshooting."
+  });
+  var stream = await session.promptStreaming(text);
+  var full = '';
+  var content = bubble.querySelector('.ai-bubble-content');
+  for await (var chunk of stream) {
+    full = chunk;
+    content.innerHTML = renderMarkdown(full);
+    scrollAiToBottom();
+  }
+  session.destroy();
+  aiMessages.push({ role: 'assistant', content: full });
+  finishAiStream(bubble);
+}
+
+async function streamServerAI(bubble) {
+  var content = bubble.querySelector('.ai-bubble-content');
+  var fullText = '';
+
+  try {
+    var res = await fetch(API + '/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(Auth.token ? { 'Authorization': 'Bearer ' + Auth.token } : {}),
+      },
+      body: JSON.stringify({ messages: aiMessages }),
+    });
+
+    if (!res.ok) throw new Error('AI request failed');
+    if (!res.body) throw new Error('No response body');
+
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+
+    while (true) {
+      var result = await reader.read();
+      if (result.done) break;
+      var text = decoder.decode(result.value);
+      for (var line of text.split('\n')) {
+        if (line.startsWith('data: ')) {
+          try {
+            var obj = JSON.parse(line.slice(6));
+            if (obj.chunk) {
+              fullText += obj.chunk;
+              content.innerHTML = renderMarkdown(fullText);
+              scrollAiToBottom();
+            }
+            if (obj.done) break;
+            if (obj.error) {
+              content.innerHTML = '<span style="color:#f87171">' + escapeHtml(obj.error) + '</span>';
+            }
+          } catch (e) { /* partial JSON */ }
+        }
+      }
+    }
+  } catch (err) {
+    content.innerHTML = '<span style="color:#f87171">Error: ' + escapeHtml(err.message) + '</span>';
+  }
+
+  if (fullText) aiMessages.push({ role: 'assistant', content: fullText });
+  finishAiStream(bubble);
+}
+
+function renderUserMessage(text) {
+  var msgs = document.getElementById('ai-chat-messages');
+  var div = document.createElement('div');
+  div.className = 'ai-msg ai-msg-user';
+  div.innerHTML = '<div class="ai-bubble ai-bubble-user">' + escapeHtml(text) + '</div>';
+  msgs.appendChild(div);
+  scrollAiToBottom();
+}
+
+function appendAssistantBubble() {
+  var msgs = document.getElementById('ai-chat-messages');
+  var div = document.createElement('div');
+  div.className = 'ai-msg ai-msg-assistant';
+  div.innerHTML = '<div class="ai-avatar">&#10022;</div><div class="ai-bubble ai-bubble-assistant"><div class="ai-bubble-content ai-thinking"><span class="ai-dot"></span><span class="ai-dot"></span><span class="ai-dot"></span></div></div>';
+  msgs.appendChild(div);
+  scrollAiToBottom();
+  return div;
+}
+
+function finishAiStream(bubble) {
+  aiStreaming = false;
+  document.getElementById('ai-send-btn').disabled = false;
+  bubble.querySelector('.ai-bubble-content').classList.remove('ai-thinking');
+}
+
+function scrollAiToBottom() {
+  var msgs = document.getElementById('ai-chat-messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.+)$/gm, '<h4 style="margin:8px 0 4px;font-size:13px;font-weight:600">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="margin:10px 0 5px;font-size:14px;font-weight:600">$1</h3>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul style="padding-left:18px;margin:6px 0">$1</ul>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE: TAILSCALE
+   ═══════════════════════════════════════════════ */
+registerPage('tailscale', {
+  async show() {
+    await refreshTailscale();
+  }
+});
+
+async function refreshTailscale() {
+  try {
+    var data = await apiGet('/tailscale/status');
+    var tsText = document.getElementById('ts-status-text');
+    var tsSub = document.getElementById('ts-status-sub');
+    var tsBadge = document.getElementById('ts-status-badge');
+    var tsUpBtn = document.getElementById('ts-up-btn');
+    var tsDownBtn = document.getElementById('ts-down-btn');
+    var tsLoginSection = document.getElementById('ts-login-section');
+    var tsExitSection = document.getElementById('ts-exit-section');
+    var tsPeersSection = document.getElementById('ts-peers-section');
+
+    if (!data.installed) {
+      tsText.textContent = 'Tailscale not installed';
+      tsSub.textContent = 'Run: curl -fsSL https://tailscale.com/install.sh | sh';
+      tsBadge.innerHTML = '<span class="badge badge-red">Not Installed</span>';
+      return;
+    }
+
+    if (data.running) {
+      tsText.textContent = 'Connected';
+      tsSub.textContent = data.hostname ? data.hostname + ' (' + (data.ips || []).join(', ') + ')' : '';
+      tsBadge.innerHTML = '<span class="badge badge-green">Connected</span>';
+      tsUpBtn.disabled = true;
+      tsDownBtn.disabled = false;
+
+      // Show exit nodes
+      if (data.peers && data.peers.length > 0) {
+        tsExitSection.style.display = 'block';
+        var exitHtml = '';
+        data.peers.forEach(function(p) {
+          if (p.exit_node_option) {
+            var active = p.exit_node;
+            exitHtml += '<div class="row" onclick="setTsExitNode(\'' + p.ips[0] + '\')" style="cursor:pointer">';
+            exitHtml += '<div class="row-body"><div class="row-title" style="font-size:13px">' + escapeHtml(p.hostname) + '</div>';
+            exitHtml += '<div class="row-sub">' + p.ips.join(', ') + '</div></div>';
+            exitHtml += '<div class="row-end">' + (active ? '<span class="badge badge-green">Active</span>' : '') + '</div></div>';
+          }
+        });
+        if (exitHtml) {
+          exitHtml = '<div class="row" onclick="setTsExitNode(null)" style="cursor:pointer"><div class="row-body"><div class="row-title" style="font-size:13px;color:#f87171">Clear exit node</div></div></div>' + exitHtml;
+          document.getElementById('ts-exit-nodes').innerHTML = exitHtml;
+        }
+      }
+
+      // Show peers as device browser
+      renderTailscalePeers(data.peers || []);
+    } else {
+      tsText.textContent = 'Disconnected';
+      tsSub.textContent = data.error || '';
+      tsBadge.innerHTML = '<span class="badge badge-red">Disconnected</span>';
+      tsUpBtn.disabled = false;
+      tsDownBtn.disabled = true;
+      tsExitSection.style.display = 'none';
+      tsPeersSection.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text-3);font-size:13px">Connect to Tailscale to see devices</div>';
+    }
+  } catch (e) { /* silent */ }
+}
+
+function renderTailscalePeers(peers) {
+  var el = document.getElementById('ts-peers-list');
+  if (!peers || peers.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text-3);font-size:13px">No devices on your Tailscale network</div>';
+    return;
+  }
+  var html = '<div class="row-list">';
+  peers.forEach(function(p) {
+    var osIcon = p.os === 'linux' ? '&#128241;' : p.os === 'windows' ? '&#128187;' : p.os === 'darwin' ? '&#128187;' : '&#128241;';
+    html += '<div class="ts-device">';
+    html += '<div class="ts-device-icon">' + osIcon + '</div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:13px;font-weight:500">' + escapeHtml(p.hostname) + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">' + p.ips.join(', ') + '</div>';
+    html += '</div>';
+    html += '<div class="' + (p.online ? 'ts-device-online' : 'ts-device-offline') + '"></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function tailscaleUp() {
+  var authKey = document.getElementById('ts-auth-key').value || null;
+  document.getElementById('ts-up-btn').disabled = true;
+  try {
+    var result = await apiPost('/tailscale/up', { auth_key: authKey });
+    if (result.status === 'needs_auth') {
+      document.getElementById('ts-login-section').style.display = 'block';
+      document.getElementById('ts-login-url').href = result.login_url;
+      document.getElementById('ts-login-url').textContent = result.login_url;
+      toast('Open the link to authenticate');
+    } else if (result.status === 'connected') {
+      toast('Connected to Tailscale');
+    } else {
+      toast(result.message || 'Connection failed');
+    }
+    await refreshTailscale();
+  } catch (err) {
+    toast('Error: ' + err.message);
+    document.getElementById('ts-up-btn').disabled = false;
+  }
+}
+
+async function tailscaleDown() {
+  try {
+    await apiPost('/tailscale/down');
+    toast('Disconnected from Tailscale');
+    document.getElementById('ts-login-section').style.display = 'none';
+    await refreshTailscale();
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+async function setTsExitNode(ip) {
+  try {
+    await apiPost('/tailscale/set-exit-node', { ip: ip });
+    toast(ip ? 'Exit node set' : 'Exit node cleared');
+    await refreshTailscale();
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE: SHORTCUTS
+   ═══════════════════════════════════════════════ */
+let userShortcuts = [];
+
+registerPage('shortcuts', {
+  async show() {
+    await loadShortcuts();
+    document.getElementById('add-shortcut-form').style.display = 'none';
+  }
+});
+
+async function loadShortcuts() {
+  try {
+    var data = await apiGet('/shortcuts');
+    userShortcuts = data.shortcuts || [];
+  } catch (e) {
+    userShortcuts = [];
+  }
+  renderShortcuts();
+}
+
+function renderShortcuts() {
+  var el = document.getElementById('shortcuts-list');
+  var addBtn = document.getElementById('shortcuts-add-btn');
+  if (addBtn) addBtn.style.display = Auth.isAdmin ? 'flex' : 'none';
+
+  if (userShortcuts.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text-3);font-size:13px">No shortcuts yet.' + (Auth.isAdmin ? ' Tap + to add one.' : '') + '</div>';
+    return;
+  }
+  var html = '';
+  userShortcuts.forEach(function(s, i) {
+    html += '<div class="row" onclick="window.open(\'' + escapeHtml(s.url) + '\', \'_blank\')" style="cursor:pointer">';
+    html += '<div style="font-size:24px;width:36px;text-align:center">' + (s.icon || '&#128241;') + '</div>';
+    html += '<div class="row-body"><div class="row-title" style="font-size:13px">' + escapeHtml(s.name) + '</div>';
+    html += '<div class="row-sub">' + escapeHtml(s.url) + '</div></div>';
+    if (Auth.isAdmin) {
+      html += '<div class="row-end" style="cursor:pointer" onclick="event.stopPropagation();removeShortcut(' + i + ')">';
+      html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function showAddShortcut() {
+  if (!Auth.isAdmin) { showPage('admin-login'); pendingAdminAction = 'shortcuts'; return; }
+  document.getElementById('add-shortcut-form').style.display = 'block';
+  document.getElementById('shortcut-name').value = '';
+  document.getElementById('shortcut-url').value = '';
+  document.getElementById('shortcut-icon').value = '';
+  document.getElementById('shortcut-name').focus();
+}
+
+function hideAddShortcut() {
+  document.getElementById('add-shortcut-form').style.display = 'none';
+}
+
+async function saveShortcut() {
+  var name = document.getElementById('shortcut-name').value.trim();
+  var url = document.getElementById('shortcut-url').value.trim();
+  var icon = document.getElementById('shortcut-icon').value.trim();
+  if (!name || !url) { toast('Name and URL required'); return; }
+  try {
+    await apiPost('/shortcuts', { name: name, url: url, icon: icon });
+    hideAddShortcut();
+    await loadShortcuts();
+    toast('Shortcut added');
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+async function removeShortcut(i) {
+  if (!Auth.isAdmin) return;
+  try {
+    await apiDelete('/shortcuts/' + i);
+    await loadShortcuts();
+    toast('Shortcut removed');
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE: SETTINGS
+   ═══════════════════════════════════════════════ */
+registerPage('settings', {
+  async show() {
+    if (!Auth.isAdmin) { showPage('admin-login'); pendingAdminAction = 'settings'; return; }
+    await loadSettings();
+  }
+});
+
+async function loadSettings() {
+  try {
+    var data = await apiGet('/settings');
+    var e = data.editable || {};
+    document.getElementById('set-ssid').value = e.AP_SSID || '';
+    document.getElementById('set-passphrase').value = '';
+    document.getElementById('set-channel').value = e.AP_CHANNEL || 6;
+    document.getElementById('set-country').value = e.AP_COUNTRY_CODE || 'GB';
+    document.getElementById('set-tools-only').checked = e.CAPTIVE_PORTAL_TOOLS_ONLY !== false;
+  } catch (err) {
+    toast('Failed to load settings');
+  }
+}
+
+async function saveSettings() {
+  var updates = {};
+  var ssid = document.getElementById('set-ssid').value.trim();
+  var pass = document.getElementById('set-passphrase').value;
+  var channel = parseInt(document.getElementById('set-channel').value);
+  var country = document.getElementById('set-country').value.trim().toUpperCase();
+  var toolsOnly = document.getElementById('set-tools-only').checked;
+
+  if (ssid) updates.AP_SSID = ssid;
+  if (pass) updates.AP_PASSPHRASE = pass;
+  if (channel) updates.AP_CHANNEL = channel;
+  if (country) updates.AP_COUNTRY_CODE = country;
+  updates.CAPTIVE_PORTAL_TOOLS_ONLY = toolsOnly;
+
+  try {
+    var result = await apiPost('/settings', updates);
+    toast('Settings saved');
+    if (result.needs_ap_restart) {
+      document.getElementById('restart-ap-btn').style.display = 'flex';
+    }
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+async function restartAp() {
+  try {
+    await apiPost('/settings/restart-ap');
+    toast('AP restarted');
+    document.getElementById('restart-ap-btn').style.display = 'none';
+  } catch (err) {
+    toast('Error: ' + err.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   UPDATE CHECK
+   ═══════════════════════════════════════════════ */
+async function checkForUpdates() {
+  var statusText = document.getElementById('update-status-text');
+  var versionText = document.getElementById('update-version-text');
+  var badge = document.getElementById('update-badge');
+
+  statusText.textContent = 'Checking...';
+  versionText.textContent = '';
+  badge.innerHTML = '';
+
+  try {
+    var data = await apiGet('/system/update-check');
+
+    if (data.error) {
+      statusText.textContent = 'Could not check for updates';
+      versionText.textContent = data.error;
+      badge.innerHTML = '<span class="badge badge-orange">Error</span>';
+      return;
+    }
+
+    var local = data.local_version;
+    var latest = data.latest_version;
+
+    if (data.update_available) {
+      statusText.textContent = 'Update available';
+      versionText.textContent = local + ' → ' + latest;
+      badge.innerHTML = '<span class="badge badge-green">New</span>';
+    } else {
+      statusText.textContent = 'Up to date';
+      versionText.textContent = 'v' + local;
+      badge.innerHTML = '<span class="badge badge-blue">Current</span>';
+    }
+
+    if (data.download_url) {
+      versionText.textContent += ' — ';
+      var link = document.createElement('a');
+      link.href = data.download_url;
+      link.target = '_blank';
+      link.style.color = 'var(--accent)';
+      link.textContent = 'Download';
+      versionText.appendChild(link);
+    }
+  } catch (err) {
+    statusText.textContent = 'Could not check for updates';
+    versionText.textContent = err.message;
+    badge.innerHTML = '<span class="badge badge-orange">Error</span>';
+  }
+}
+
 /* ── Back button SVG injection ──────────────── */
 document.querySelectorAll('.back-btn').forEach(btn => {
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
@@ -643,7 +1218,6 @@ document.querySelectorAll('.back-btn').forEach(btn => {
 /* ── Startup ────────────────────────────────── */
 (function init() {
   if (!Auth.isAdmin) updateAdminUI();
-  // Show login page only when redirected by captive portal
-  const wasRedirected = document.referrer && document.referrer.indexOf('http://10.0.0.1:') === 0;
+  var wasRedirected = document.referrer && document.referrer.indexOf('http://10.0.0.1:') === 0;
   showPage(wasRedirected ? 'login' : 'home');
 })();
