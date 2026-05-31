@@ -10,25 +10,25 @@ The recommended hardware is a Raspberry Pi 5 due to it being powerful and portab
 ## Installing
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s
+curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s
 ```
 
-Or with the custom domain:
+If the link above doesn't work, use the GitHub fallback:
 
 ```bash
-curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s
+curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s
 ```
 
 ## Uninstalling
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s -- --uninstall
+curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --uninstall
 ```
 
-Or with the custom domain:
+GitHub fallback:
 
 ```bash
-curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s -- --uninstall
 ```
 
 ## Features

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  Trarou — Installer / Uninstaller
-#  Install:    curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s
-#  Uninstall:  curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s -- --uninstall
+#  Install:    curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s
+#  Uninstall:  curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --uninstall
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-set -euo pipefail
 
 REPO="StuffzEZ/Trarou"
 INSTALL_DIR="/opt/trarou"
@@ -20,7 +19,7 @@ for arg in "$@"; do
 done
 
 # ── Auto-elevate to root ─────────────────────────────────────────────────────
-if [ "$EUID" -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
     echo -e "  Need root, re-running with sudo..."
     exec sudo bash "$0" "$@"
 fi
@@ -71,10 +70,10 @@ if [ "$UNINSTALL" -eq 1 ]; then
     echo ""
 
     info "Stopping services..."
-    for svc in trarou trarou-frontend; do
-        systemctl stop "$svc" 2>/dev/null || true
-        systemctl disable "$svc" 2>/dev/null || true
-    done
+    systemctl stop trarou 2>/dev/null || true
+    systemctl stop trarou-frontend 2>/dev/null || true
+    systemctl disable trarou 2>/dev/null || true
+    systemctl disable trarou-frontend 2>/dev/null || true
     systemctl daemon-reload 2>/dev/null || true
     ok "Services stopped"
 
@@ -85,9 +84,8 @@ if [ "$UNINSTALL" -eq 1 ]; then
     ok "Processes killed"
 
     info "Cleaning iptables rules..."
-    for iface in wlan0 wlan1; do
-        iptables -t nat -D PREROUTING -i "$iface" -j TRAROU_PORTAL 2>/dev/null || true
-    done
+    iptables -t nat -D PREROUTING -i wlan0 -j TRAROU_PORTAL 2>/dev/null || true
+    iptables -t nat -D PREROUTING -i wlan1 -j TRAROU_PORTAL 2>/dev/null || true
     iptables -t nat -F TRAROU_PORTAL 2>/dev/null || true
     iptables -t nat -X TRAROU_PORTAL 2>/dev/null || true
     ok "iptables cleaned"
@@ -138,7 +136,7 @@ echo ""
 
 # Get latest release
 info "Checking latest release..."
-LATEST=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name"' | cut -d'"' -f4)
+LATEST=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name"' | cut -d'"' -f4 || true)
 
 if [ -z "$LATEST" ]; then
     err "Could not fetch latest release from GitHub."
