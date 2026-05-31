@@ -1,0 +1,18 @@
+[Unit]
+Description=Trarou Frontend Server
+After=network.target trarou.service
+Wants=trarou.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/trarou/frontend
+ExecStart=/usr/bin/python3 /opt/trarou/frontend/serve.py 3000
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trarou-frontend
+
+[Install]
+WantedBy=multi-user.target

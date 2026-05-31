@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#080b14">
+  <title>Trarou</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<div class="mesh-bg"><div class="mesh-blob-3"></div></div>
+<div id="toast"></div>
+
+<!-- ═══════ PAGE: LOGIN ═══════ -->
+<div id="page-login" class="page-section" style="display:none">
+  <div class="login-wrap">
+    <div class="login-card bevel">
+      <div class="login-logo">
+        <div class="login-logo-mark bevel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#fff;width:30px;height:30px">
+            <circle cx="12" cy="12" r="2"/>
+            <path d="M16.24 7.76a6 6 0 010 8.49m-8.48-.01a6 6 0 010-8.49m11.31-2.82a10 10 0 010 14.14m-14.14 0a10 10 0 010-14.14"/>
+          </svg>
+        </div>
+      </div>
+      <div class="login-title">Trarou</div>
+      <div class="login-sub" id="login-ssid-text">Connect to continue</div>
+      <div class="login-error" id="login-error"></div>
+      <div class="input-group">
+        <label class="input-label">Username</label>
+        <input class="input" id="login-username" type="text" placeholder="admin" autocomplete="username" autocapitalize="none">
+      </div>
+      <div class="input-group" style="margin-bottom:24px">
+        <label class="input-label">Password</label>
+        <input class="input" id="login-password" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-full" id="login-btn">
+        <span id="login-btn-text">Sign In</span>
+        <span id="login-btn-spinner" class="spinner" style="display:none"></span>
+      </button>
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:var(--text-3);text-align:center">
+      Trarou Travel Router &nbsp;&#183;&nbsp; v1.0
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: HOME ═══════ -->
+<div id="page-home" class="page-section page" style="display:none">
+  <div class="status-bar">
+    <div class="ssid">
+      <div class="status-dot" id="home-dot"></div>
+      <span id="home-ssid">Trarou</span>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-3)" id="home-time"></div>
+  </div>
+  <div class="greeting-block">
+    <div class="greeting-eyebrow">Travel Router</div>
+    <div class="greeting-title">Good to go,<br><span id="greeting-name">Captain</span></div>
+  </div>
+  <div style="padding:0 20px;margin-top:4px;position:relative;z-index:1">
+    <div class="row-list" style="margin-bottom:0">
+      <div class="row" id="quick-network-row" style="cursor:default">
+        <div class="row-icon" style="background:var(--grad-network);border-radius:10px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg>
+        </div>
+        <div class="row-body">
+          <div class="row-title" style="font-size:13px" id="quick-ap">AP active</div>
+          <div class="row-sub" id="quick-client">Scanning&#8230;</div>
+        </div>
+        <div class="row-end" id="quick-internet-badge"></div>
+      </div>
+    </div>
+  </div>
+  <div class="page-content" style="padding-top:28px">
+    <div class="section-title">Apps</div>
+    <div class="app-grid">
+      <div class="app-icon" onclick="showPage('media')">
+        <div class="app-icon-img icon-media">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+        </div>
+        <span class="app-icon-label">Media</span>
+      </div>
+      <div class="app-icon" id="app-upload" onclick="requireAdmin('upload')">
+        <div class="app-icon-img icon-upload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <span class="app-icon-label">Upload</span>
+      </div>
+      <div class="app-icon" onclick="showPage('network')">
+        <div class="app-icon-img icon-network">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="rgba(255,255,255,0.95)" stroke="none"/></svg>
+        </div>
+        <span class="app-icon-label">Network</span>
+      </div>
+      <div class="app-icon" id="app-vnc" onclick="requireAdmin('vnc')">
+        <div class="app-icon-img icon-vnc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <span class="app-icon-label">Remote</span>
+      </div>
+      <div class="app-icon" onclick="showPage('system')">
+        <div class="app-icon-img icon-system">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+        </div>
+        <span class="app-icon-label">System</span>
+      </div>
+      <div class="app-icon" id="app-admin-login" onclick="showAdminLoginPrompt()">
+        <div class="app-icon-img icon-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </div>
+        <span class="app-icon-label" id="admin-icon-label">Admin</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: MEDIA ═══════ -->
+<div id="page-media" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Media</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div id="media-breadcrumb" class="section" style="display:none">
+      <div class="row-list">
+        <div class="row" id="media-breadcrumb-row" onclick="mediaNavUp()">
+          <div class="row-body"><div class="row-title" style="font-size:13px">&#8592; Back</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="media-folders" class="section"></div>
+    <div id="media-files-section" class="section"></div>
+    <div id="media-loading" style="text-align:center;padding:40px 0;color:var(--text-2);display:none">
+      <div class="spinner" style="border-top-color:var(--accent)"></div>
+    </div>
+    <div id="media-empty" style="text-align:center;padding:60px 0;color:var(--text-3);display:none">
+      <div style="font-size:40px;margin-bottom:12px">&#128233;</div>
+      <div style="font-size:14px">No media files yet</div>
+      <div style="font-size:12px;margin-top:6px">Upload content from the Upload app</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: UPLOAD ═══════ -->
+<div id="page-upload" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Upload</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="section-title">Destination folder</div>
+      <div class="input-group" style="margin-bottom:0">
+        <input class="input" id="upload-folder" type="text" placeholder="/ (root)" autocapitalize="none">
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Files</div>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-zone-icon">&#128193;</div>
+        <div class="drop-zone-text">Tap to choose files</div>
+        <div class="drop-zone-sub">or drag &amp; drop here</div>
+      </div>
+      <input type="file" id="file-input" multiple style="display:none">
+    </div>
+    <div id="upload-queue" class="section" style="display:none">
+      <div class="section-title">Queue</div>
+      <div class="row-list" id="upload-queue-list"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="upload-btn" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload All
+    </button>
+    <div id="upload-progress-wrap" style="display:none;margin-top:16px">
+      <div style="font-size:13px;color:var(--text-2);margin-bottom:6px" id="upload-progress-label">Uploading&#8230;</div>
+      <div class="progress-bar"><div class="progress-fill" id="upload-progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: NETWORK ═══════ -->
+<div id="page-network" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Network</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="section-title">Access Point</div>
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-icon" style="background:var(--grad-network)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg>
+          </div>
+          <div class="row-body">
+            <div class="row-title" id="net-ap-ssid">&mdash;</div>
+            <div class="row-sub" id="net-ap-ip">&mdash;</div>
+          </div>
+          <div id="net-ap-badge"></div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Upstream Connection</div>
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-icon" style="background:var(--grad-system)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <div class="row-body">
+            <div class="row-title" id="net-client-ssid">Not connected</div>
+            <div class="row-sub" id="net-client-ip">&mdash;</div>
+          </div>
+          <div id="net-internet-badge"></div>
+        </div>
+        <div class="row" id="net-disconnect-row" style="display:none" onclick="disconnectWifi()">
+          <div class="row-body"><div class="row-title" style="color:#f87171;font-size:13px">Disconnect</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="section" id="net-scan-section">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Available Networks</span>
+        <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" id="scan-btn" onclick="scanNetworks()">Scan</button>
+      </div>
+      <div id="net-scan-results">
+        <div style="text-align:center;padding:32px 0;color:var(--text-3);font-size:13px">Press Scan to search for networks</div>
+      </div>
+    </div>
+    <div id="net-connect-form" class="section" style="display:none">
+      <div class="section-title">Connect to <span id="connect-ssid-label"></span></div>
+      <div class="row-list" style="padding:16px">
+        <div class="input-group">
+          <label class="input-label">Password</label>
+          <input class="input" id="connect-password" type="password" placeholder="Leave blank if open network">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn btn-secondary" style="flex:1" onclick="cancelConnect()">Cancel</button>
+          <button class="btn btn-primary" style="flex:1" id="connect-btn" onclick="doConnect()">Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: REMOTE (VNC) ═══════ -->
+<div id="page-vnc" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>Remote Desktop</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="vnc-frame-wrap" id="vnc-frame-wrap">
+        <div class="vnc-placeholder" id="vnc-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <div>Remote desktop is off</div>
+        </div>
+        <iframe id="vnc-iframe" style="display:none" allow="fullscreen" allowfullscreen></iframe>
+      </div>
+    </div>
+    <div class="section">
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-body">
+            <div class="row-title" style="font-size:13px">Status</div>
+            <div class="row-sub" id="vnc-status-text">Stopped</div>
+          </div>
+          <div id="vnc-status-badge"></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-success" style="flex:1" id="vnc-start-btn" onclick="startVnc()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start
+      </button>
+      <button class="btn btn-danger" style="flex:1" id="vnc-stop-btn" onclick="stopVnc()" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        Stop
+      </button>
+      <button class="btn btn-secondary" id="vnc-open-btn" onclick="openVncTab()" style="display:none;padding:13px 16px" title="Open in new tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </button>
+    </div>
+    <div class="section" style="margin-top:24px">
+      <div class="section-title">About Remote Desktop</div>
+      <div class="glass-2" style="padding:16px;font-size:13px;color:var(--text-2);line-height:1.6">
+        Start the remote session to control the router&#8217;s desktop. Use this to connect to hotel or airport Wi-Fi networks with their own captive portals. Open in a new tab for a better experience.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: SYSTEM ═══════ -->
+<div id="page-system" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>System</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="section-title">Hardware</div>
+      <div class="stat-grid">
+        <div class="stat-card bevel">
+          <div class="stat-label">CPU</div>
+          <div class="stat-value"><span id="sys-cpu">&mdash;</span><span class="stat-unit">%</span></div>
+          <div class="stat-bar"><div class="stat-bar-fill" id="sys-cpu-bar" style="background:var(--grad-system);width:0%"></div></div>
+        </div>
+        <div class="stat-card bevel">
+          <div class="stat-label">Memory</div>
+          <div class="stat-value"><span id="sys-mem">&mdash;</span><span class="stat-unit">%</span></div>
+          <div class="stat-bar"><div class="stat-bar-fill" id="sys-mem-bar" style="background:var(--grad-media);width:0%"></div></div>
+        </div>
+        <div class="stat-card bevel">
+          <div class="stat-label">Disk</div>
+          <div class="stat-value"><span id="sys-disk">&mdash;</span><span class="stat-unit">%</span></div>
+          <div class="stat-bar"><div class="stat-bar-fill" id="sys-disk-bar" style="background:var(--grad-upload);width:0%"></div></div>
+        </div>
+        <div class="stat-card bevel">
+          <div class="stat-label">Uptime</div>
+          <div class="stat-value" style="font-size:18px" id="sys-uptime">&mdash;</div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Info</div>
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Hostname</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="sys-hostname">&mdash;</span></div>
+        </div>
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Load Average</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="sys-load">&mdash;</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="section" id="sys-admin-section" style="display:none">
+      <div class="section-title">Admin</div>
+      <div class="row-list">
+        <div class="row" onclick="showPage('change-password')">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Change Password</div></div>
+          <div class="row-end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+        <div class="row" onclick="confirmReboot()">
+          <div class="row-body"><div class="row-title" style="font-size:13px;color:#fb923c">Reboot</div></div>
+          <div class="row-end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+        <div class="row" onclick="confirmShutdown()">
+          <div class="row-body"><div class="row-title" style="font-size:13px;color:#f87171">Shutdown</div></div>
+          <div class="row-end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: CHANGE PASSWORD ═══════ -->
+<div id="page-change-password" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('system')"></button>
+    <h1>Change Password</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div class="glass-2" style="padding:20px">
+        <div class="input-group">
+          <label class="input-label">New Password</label>
+          <input class="input" id="new-pw-1" type="password" placeholder="Min 8 characters">
+        </div>
+        <div class="input-group" style="margin-bottom:20px">
+          <label class="input-label">Confirm Password</label>
+          <input class="input" id="new-pw-2" type="password" placeholder="Repeat password">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="changePassword()">Update Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ PAGE: ADMIN LOGIN ═══════ -->
+<div id="page-admin-login" class="page-section" style="display:none">
+  <div class="login-wrap">
+    <div class="login-card bevel">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+        <button class="back-btn" onclick="showPage('home')"></button>
+        <div>
+          <div style="font-size:18px;font-weight:600">Admin Login</div>
+          <div style="font-size:12px;color:var(--text-2)">Required for this feature</div>
+        </div>
+      </div>
+      <div class="login-error" id="admin-login-error"></div>
+      <div class="input-group">
+        <label class="input-label">Password</label>
+        <input class="input" id="admin-login-pw" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:8px" id="admin-login-btn" onclick="doAdminLogin()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/pages.js"></script>
+</body>
+</html>
