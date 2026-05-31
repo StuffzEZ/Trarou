@@ -65,7 +65,9 @@ def _safe_path(rel_path: str) -> Path:
     """Resolve a relative path safely within the media dir."""
     base = _media_dir().resolve()
     target = (base / rel_path).resolve()
-    if not str(target).startswith(str(base)):
+    try:
+        target.relative_to(base)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Path traversal not allowed")
     return target
 
@@ -91,7 +93,10 @@ async def get_media_tree():
 
         # Skip root itself from folder list
         if root_path != base:
-            folders.append(_folder_info(root_path))
+            try:
+                folders.append(_folder_info(root_path))
+            except Exception as e:
+                log.warning(f"Skipping folder {root_path}: {e}")
 
         for fname in sorted(filenames):
             fpath = root_path / fname
@@ -186,8 +191,8 @@ async def delete_folder(admin: AdminDep, path: str = Query(...)):
     if not target.exists() or not target.is_dir():
         raise HTTPException(404, "Folder not found")
     try:
-        shutil.rmtree(target)
-    except Exception as e:
-        raise HTTPException(500, f"Could not delete folder: {e}")
+        target.rmdir()  # Only delete empty folders
+    except OSError:
+        raise HTTPException(400, "Folder is not empty")
     log.info(f"Admin deleted folder: {target}")
     return {"deleted": path}

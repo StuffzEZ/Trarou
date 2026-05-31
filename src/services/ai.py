@@ -190,16 +190,14 @@ class AIService:
                 "num_ctx": 2048,
             },
         }).encode()
-        loop = asyncio.get_event_loop()
 
-        def do_request():
+        def do_stream():
             req = urllib.request.Request(
                 "http://localhost:11434/api/chat",
                 data=payload,
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            chunks = []
             with urllib.request.urlopen(req, timeout=120) as resp:
                 for line in resp:
                     line = line.strip()
@@ -208,14 +206,23 @@ class AIService:
                             obj = json.loads(line)
                             content = obj.get("message", {}).get("content", "")
                             if content:
-                                chunks.append(content)
+                                yield content
                         except Exception:
                             pass
-            return chunks
 
-        chunks = await loop.run_in_executor(None, do_request)
-        for chunk in chunks:
-            yield chunk
+        # Run the generator in an executor and yield chunks
+        loop = asyncio.get_event_loop()
+        gen = do_stream()
+        while True:
+            try:
+                chunk = await loop.run_in_executor(None, lambda: next(gen, None))
+                if chunk is None:
+                    break
+                yield chunk
+            except StopIteration:
+                break
+            except Exception:
+                break
 
     async def ollama_pull(self, model: str) -> AsyncIterator[str]:
         import urllib.request
@@ -261,6 +268,8 @@ class AIService:
 
     # -- Auto-setup -----------------------------------------------------------
 
+    _pull_task: asyncio.Task | None = None
+
     async def auto_setup(self) -> dict:
         """Auto-pull the recommended model if no models are installed."""
         if not await self.ollama_available():
@@ -274,8 +283,8 @@ class AIService:
         model = rec["recommended"]
         log.info(f"Auto-pulling recommended model: {model}")
 
-        # Pull in background
-        asyncio.create_task(self._background_pull(model))
+        # Pull in background and store reference to prevent GC
+        self._pull_task = asyncio.create_task(self._background_pull(model))
         return {"status": "pulling", "model": model, "description": rec["description"]}
 
     async def _background_pull(self, model: str):

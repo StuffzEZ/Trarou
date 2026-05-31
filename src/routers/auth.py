@@ -43,9 +43,8 @@ def _create_access_token(data: dict, expires_delta: timedelta | None = None) -> 
 
 def _verify_admin_password(plain: str) -> bool:
     if not settings.ADMIN_PASSWORD_HASH:
-        # First-run fallback — set ADMIN_PASSWORD_HASH in /etc/trarou/trarou.env
-        log.warning("No ADMIN_PASSWORD_HASH set — using insecure default!")
-        return plain == "trarou"
+        log.error("No ADMIN_PASSWORD_HASH set! Run the installer to configure.")
+        return False
     return bcrypt.checkpw(plain.encode(), settings.ADMIN_PASSWORD_HASH.encode())
 
 
@@ -134,6 +133,11 @@ async def _authorize_mac(mac: str):
     Requires the process to run with appropriate privileges or via sudo.
     """
     import asyncio
+    import re
+    # Sanitize MAC address - only allow hex digits and colons
+    if not re.match(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$', mac):
+        log.warning(f"Invalid MAC address format: {mac}")
+        return
     cmd = (
         f"iptables -t nat -I PREROUTING 1 -m mac --mac-source {mac} "
         f"-j RETURN"

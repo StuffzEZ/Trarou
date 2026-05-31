@@ -135,9 +135,10 @@ async def captive_apple():
 
 @app.get("/success.txt")
 @app.get("/ncsi.txt")
-async def captive_windows_firefox():
+async def captive_windows_firefox(request: Request):
+    path = request.url.path
     if settings.CAPTIVE_PORTAL_TOOLS_ONLY:
-        return Response(content="Microsoft NCSI" if "ncsi" in "/ncsi.txt" else "success\n",
+        return Response(content="Microsoft NCSI" if "ncsi" in path else "success\n",
                         media_type="text/plain")
     return RedirectResponse(url=settings.FRONTEND_URL)
 

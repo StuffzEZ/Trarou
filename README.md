@@ -19,6 +19,18 @@ If the link above doesn't work, use the GitHub fallback:
 curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s
 ```
 
+## Upgrading
+
+```bash
+curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --upgrade
+```
+
+GitHub fallback:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh | sudo bash -s -- --upgrade
+```
+
 ## Uninstalling
 
 ```bash

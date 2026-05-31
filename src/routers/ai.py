@@ -76,7 +76,7 @@ async def ai_chat(
                 await asyncio.sleep(0)
         except Exception as e:
             log.error(f"AI stream error: {e}")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': 'An error occurred processing your request'})}\n\n"
         finally:
             yield f"data: {json.dumps({'done': True})}\n\n"
 

@@ -24,8 +24,8 @@ from config import settings
 
 log = logging.getLogger(__name__)
 
-HOSTAPD_CONF = "/tmp/trarou-hostapd.conf"
-HOSTAPD_PID  = "/tmp/trarou-hostapd.pid"
+HOSTAPD_CONF = "/etc/trarou/trarou-hostapd.conf"
+HOSTAPD_PID  = "/var/run/trarou-hostapd.pid"
 
 
 class HostapdService:
@@ -47,6 +47,8 @@ class HostapdService:
         """)
 
         if settings.AP_PASSPHRASE:
+            # Passphrase is stored in env file with 600 permissions
+            # hostapd requires it in this config file
             base += textwrap.dedent(f"""\
                 auth_algs=1
                 wpa=2
@@ -115,8 +117,10 @@ class HostapdService:
         # Give the driver time to stabilise
         await asyncio.sleep(0.8)
 
-        # Write hostapd config
+        # Write hostapd config with restrictive permissions
+        Path(HOSTAPD_CONF).parent.mkdir(parents=True, exist_ok=True)
         Path(HOSTAPD_CONF).write_text(self._build_conf())
+        os.chmod(HOSTAPD_CONF, 0o600)
         log.info(f"hostapd config: SSID={settings.AP_SSID}, "
                  f"passphrase={'set' if settings.AP_PASSPHRASE else 'open'}")
 

@@ -43,8 +43,17 @@ async def _run(cmd: str) -> tuple[int, str, str]:
 async def _check_internet() -> bool:
     try:
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, lambda: socket.setdefaulttimeout(3) or socket.gethostbyname("1.1.1.1"))
-        return True
+        def check():
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(3)
+            try:
+                s.connect(("1.1.1.1", 53))
+                s.close()
+                return True
+            except Exception:
+                s.close()
+                return False
+        return await loop.run_in_executor(None, check)
     except Exception:
         return False
 

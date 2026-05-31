@@ -2,6 +2,7 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  Trarou — Installer / Uninstaller
 #  Install:    curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s
+#  Upgrade:    curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --upgrade
 #  Uninstall:  curl -fsSL https://trarou.stufy.qzz.io/get.sh | sudo bash -s -- --uninstall
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -12,16 +13,23 @@ TMP_DIR="/tmp/trarou-installer-$$"
 
 # ── Parse flags ──────────────────────────────────────────────────────────────
 UNINSTALL=0
+UPGRADE=0
 for arg in "$@"; do
     case "$arg" in
         --uninstall) UNINSTALL=1 ;;
+        --upgrade)   UPGRADE=1 ;;
     esac
 done
 
 # ── Auto-elevate to root ─────────────────────────────────────────────────────
 if [ "$(id -u)" -ne 0 ]; then
     echo -e "  Need root, re-running with sudo..."
-    exec sudo bash "$0" "$@"
+    if [ -f "$0" ]; then
+        exec sudo bash "$0" "$@"
+    else
+        # Running via curl pipe - re-fetch and run
+        exec sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/StuffzEZ/Trarou/main/docs/get.sh)" -- "$@"
+    fi
 fi
 
 # ── Colors ───────────────────────────────────────────────────────────────────
@@ -113,6 +121,75 @@ if [ "$UNINSTALL" -eq 1 ]; then
     echo -e "  ${DIM}Media files in ~/trarou-media were preserved.${NC}"
     echo ""
     exit 0
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  UPGRADE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [ "$UPGRADE" -eq 1 ]; then
+    echo ""
+    echo -e "  ${BOLD}${YELLOW}╔═══════════════════════════════════════╗${NC}"
+    echo -e "  ${BOLD}${YELLOW}║${NC}    ${BOLD}Trarou Upgrader${NC}                    ${BOLD}${YELLOW}║${NC}"
+    echo -e "  ${BOLD}${YELLOW}╚═══════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  This will download and install the latest version."
+    echo -e "  ${DIM}Config and media files are preserved.${NC}"
+    echo ""
+
+    read -r -p "  Continue? [Y/n] " CONFIRM </dev/tty
+    if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
+        echo -e "\n  ${DIM}Upgrade cancelled.${NC}"
+        exit 0
+    fi
+    echo ""
+
+    # Get latest release
+    info "Checking latest release..."
+    LATEST=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name"' | cut -d'"' -f4 || true)
+
+    if [ -z "$LATEST" ]; then
+        err "Could not fetch latest release from GitHub."
+        exit 1
+    fi
+
+    ok "Latest release: ${BOLD}$LATEST${NC}"
+
+    # Download
+    ZIP_URL="https://github.com/$REPO/releases/download/$LATEST/trarou-$LATEST.zip"
+    ZIP_FILE="$TMP_DIR/trarou-$LATEST.zip"
+
+    mkdir -p "$TMP_DIR"
+    info "Downloading trarou-$LATEST.zip ..."
+    if ! curl -fSL -o "$ZIP_FILE" "$ZIP_URL" 2>/dev/null; then
+        err "Download failed."
+        exit 1
+    fi
+    ok "Downloaded $(du -h "$ZIP_FILE" | cut -f1)"
+
+    # Extract
+    info "Extracting..."
+    if ! unzip -qo "$ZIP_FILE" -d "$TMP_DIR/extract" 2>/dev/null; then
+        err "Extraction failed."
+        exit 1
+    fi
+    ok "Extracted"
+
+    # Find installer
+    INSTALLER=$(find "$TMP_DIR/extract" -name "install.sh" -type f | head -1)
+
+    if [ -z "$INSTALLER" ]; then
+        err "Could not find install.sh in the release zip."
+        exit 1
+    fi
+
+    # Run installer (preserves config)
+    echo ""
+    hr
+    echo -e "  ${BOLD}Running upgrade installer...${NC}"
+    hr
+    echo ""
+
+    exec bash "$INSTALLER" "$@"
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

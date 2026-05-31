@@ -1,6 +1,6 @@
 const API = window.location.hostname === 'localhost'
-  ? 'http://10.0.0.1:8000'
-  : `http://${window.location.hostname}:8000`;
+  ? 'http://10.0.0.1:8000/api'
+  : `http://${window.location.hostname}:8000/api`;
 
 const Auth = {
   _key: 'trarou_token',
@@ -90,11 +90,17 @@ function mimeEmoji(mime) {
 }
 
 function signalBars(strength) {
+  // strength is 0-100 from nmcli or negative dBm from iwlist
   let level = 0;
-  if (strength > -50 || strength > 75)  level = 4;
-  else if (strength > -65 || strength > 50) level = 3;
-  else if (strength > -75 || strength > 25) level = 2;
-  else level = 1;
+  let pct = strength;
+  // Convert dBm to percentage if negative
+  if (strength < 0) {
+    pct = Math.min(100, Math.max(0, (strength + 100) * 2));
+  }
+  if (pct > 75)      level = 4;
+  else if (pct > 50) level = 3;
+  else if (pct > 25) level = 2;
+  else if (pct > 0)  level = 1;
   return `<div class="signal-bars">
     ${[1,2,3,4].map(i => `<div class="signal-bar ${i <= level ? 'active' : ''}"></div>`).join('')}
   </div>`;
@@ -109,3 +115,15 @@ const Icon = {
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
   chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 18l6-6-6-6"/></svg>`,
 };
+
+// Safe string escaping for use in HTML attribute JavaScript strings
+function escStr(s) {
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/</g, '\\x3c')
+    .replace(/>/g, '\\x3e');
+}

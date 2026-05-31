@@ -135,15 +135,29 @@ class NetworkManagerService:
             elif "WPA" in line or "WEP" in line:
                 current_security = "WPA2" if "WPA2" in line else "WPA" if "WPA" in line else "WEP"
 
+        # Append the last network
+        if current_ssid and current_ssid not in seen:
+            networks.append(WifiNetwork(
+                ssid=current_ssid,
+                signal_strength=current_signal or -100,
+                security=current_security or "Open",
+                frequency="2.4GHz",
+            ))
+
         return sorted(networks, key=lambda n: -n.signal_strength)
 
     # ── Connect / disconnect ──────────────────────────────────────────────────
 
     async def connect(self, iface: str, ssid: str, password: Optional[str]) -> tuple[bool, str]:
+        import shlex
+        # Sanitize inputs to prevent shell injection
+        safe_ssid = shlex.quote(ssid)
+        safe_iface = shlex.quote(iface)
         if password:
-            cmd = f'nmcli dev wifi connect "{ssid}" password "{password}" ifname {iface}'
+            safe_pass = shlex.quote(password)
+            cmd = f'nmcli dev wifi connect {safe_ssid} password {safe_pass} ifname {safe_iface}'
         else:
-            cmd = f'nmcli dev wifi connect "{ssid}" ifname {iface}'
+            cmd = f'nmcli dev wifi connect {safe_ssid} ifname {safe_iface}'
 
         rc, out, err = await self._run(cmd)
         if rc == 0:
@@ -153,7 +167,8 @@ class NetworkManagerService:
         return False, err
 
     async def disconnect(self, iface: str) -> tuple[bool, str]:
-        rc, out, err = await self._run(f"nmcli dev disconnect {iface}")
+        import shlex
+        rc, out, err = await self._run(f"nmcli dev disconnect {shlex.quote(iface)}")
         if rc == 0:
             return True, out
         return False, err

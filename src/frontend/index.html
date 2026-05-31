@@ -83,11 +83,11 @@
         </div>
         <span class="app-icon-label">Media</span>
       </div>
-      <div class="app-icon" id="app-upload" onclick="requireAdmin('upload')">
-        <div class="app-icon-img icon-upload">
-          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="app-icon" onclick="showPage('about')">
+        <div class="app-icon-img icon-about">
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
         </div>
-        <span class="app-icon-label">Upload</span>
+        <span class="app-icon-label">About</span>
       </div>
       <div class="app-icon" onclick="showPage('network')">
         <div class="app-icon-img icon-network">
@@ -140,6 +140,7 @@
   <div class="page-header">
     <button class="back-btn" onclick="showPage('home')"></button>
     <h1>Media</h1>
+    <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px;margin-left:auto" onclick="requireAdmin('upload')">Upload</button>
   </div>
   <div class="page-content page-enter">
     <div id="media-breadcrumb" class="section" style="display:none">
@@ -434,6 +435,66 @@
   </div>
 </div>
 
+<!-- ═══════ PAGE: ABOUT ═══════ -->
+<div id="page-about" class="page-section page" style="display:none">
+  <div class="page-header">
+    <button class="back-btn" onclick="showPage('home')"></button>
+    <h1>About</h1>
+  </div>
+  <div class="page-content page-enter">
+    <div class="section">
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:12px">&#128225;</div>
+        <div style="font-size:22px;font-weight:600">Trarou</div>
+        <div style="font-size:13px;color:var(--text-2);margin-top:4px">Travel Router</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Version</div>
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Version</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="about-version">--</span></div>
+        </div>
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Hostname</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="about-hostname">--</span></div>
+        </div>
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Uptime</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="about-uptime">--</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">System</div>
+      <div class="row-list">
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">AP Interface</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="about-ap-iface">--</span></div>
+        </div>
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Client Interface</div></div>
+          <div class="row-end"><span style="font-family:var(--font-mono);font-size:12px" id="about-client-iface">--</span></div>
+        </div>
+        <div class="row" style="cursor:default">
+          <div class="row-body"><div class="row-title" style="font-size:13px">Installed by</div></div>
+          <div class="row-end"><span style="font-size:12px" id="about-installer">--</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Links</div>
+      <div class="row-list">
+        <div class="row" onclick="window.open('https://github.com/StuffzEZ/Trarou', '_blank')">
+          <div class="row-body"><div class="row-title" style="font-size:13px">GitHub Repository</div></div>
+          <div class="row-end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════ PAGE: AI CHAT ═══════ -->
 <div id="page-ai" class="page-section page" style="display:none">
   <div class="page-header">
@@ -598,7 +659,7 @@
       </div>
     </div>
     <button class="btn btn-primary btn-full" onclick="saveSettings()">Save Settings</button>
-    <button class="btn btn-secondary btn-full" style="margin-top:10px" id="restart-ap-btn" onclick="restartAp()" style="display:none">Restart AP</button>
+    <button class="btn btn-secondary btn-full" style="margin-top:10px;display:none" id="restart-ap-btn" onclick="restartAp()">Restart AP</button>
   </div>
 </div>
 

@@ -235,7 +235,7 @@ if [ ! -f "$ENV_DIR/trarou.env" ]; then
     done
 
     HASH=$("$INSTALL_DIR/venv/bin/python3" -c \
-        "import bcrypt; print(bcrypt.hashpw('$ADMIN_PASS'.encode(), bcrypt.gensalt()).decode())")
+        'import bcrypt,sys; print(bcrypt.hashpw(sys.stdin.read().strip().encode(), bcrypt.gensalt()).decode())' <<< "$ADMIN_PASS")
 
     cat > "$ENV_DIR/trarou.env" <<EOF
 SECRET_KEY=$SECRET

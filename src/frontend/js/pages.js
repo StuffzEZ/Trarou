@@ -88,31 +88,32 @@ registerPage('login', {
 let homeInterval;
 
 registerPage('home', {
-  init() { this._fetchStatus(); },
+  init() { fetchHomeStatus(); },
   show() {
-    this._fetchStatus();
+    fetchHomeStatus();
     updateClock();
     homeInterval = setInterval(() => {
-      this._fetchStatus();
+      fetchHomeStatus();
       updateClock();
     }, 10000);
   },
-  hide() { clearInterval(homeInterval); },
-  _fetchStatus: async () => {
-    try {
-      const data = await apiGet('/network/status');
-      document.getElementById('home-ssid').textContent = data.ap_ssid || 'Trarou';
-      document.getElementById('quick-ap').textContent = data.ap_active ? 'AP active' : 'AP offline';
-      document.getElementById('quick-client').textContent = data.client_connected
-        ? 'Connected to ' + data.client_ssid : 'No upstream connection';
-      const badge = document.getElementById('quick-internet-badge');
-      badge.innerHTML = data.internet_reachable
-        ? '<span class="badge badge-green">Online</span>'
-        : '<span class="badge badge-orange">Offline</span>';
-      document.getElementById('home-dot').classList.toggle('offline', !data.internet_reachable);
-    } catch (e) { /* silent */ }
-  }
+  hide() { clearInterval(homeInterval); }
 });
+
+async function fetchHomeStatus() {
+  try {
+    const data = await apiGet('/network/status');
+    document.getElementById('home-ssid').textContent = data.ap_ssid || 'Trarou';
+    document.getElementById('quick-ap').textContent = data.ap_active ? 'AP active' : 'AP offline';
+    document.getElementById('quick-client').textContent = data.client_connected
+      ? 'Connected to ' + data.client_ssid : 'No upstream connection';
+    const badge = document.getElementById('quick-internet-badge');
+    badge.innerHTML = data.internet_reachable
+      ? '<span class="badge badge-green">Online</span>'
+      : '<span class="badge badge-orange">Offline</span>';
+    document.getElementById('home-dot').classList.toggle('offline', !data.internet_reachable);
+  } catch (e) { /* silent */ }
+}
 
 function updateClock() {
   document.getElementById('home-time').textContent =
@@ -128,7 +129,7 @@ function renderMediaGrid(files) {
   if (!files || files.length === 0)
     return '<div style="text-align:center;padding:40px 0;color:var(--text-3);font-size:13px">No files</div>';
   return '<div class="media-grid">' + files.map(f =>
-    '<div class="media-card" onclick="playMedia(\'' + f.path.replace(/'/g, "\\'") + '\')">' +
+    '<div class="media-card" onclick="playMedia(\'' + escStr(f.path) + '\')">' +
       '<div class="media-card-thumb">' + mimeEmoji(f.mime_type) + '</div>' +
       '<div class="media-card-info">' +
         '<div class="media-card-name">' + escapeHtml(f.name) + '</div>' +
@@ -188,8 +189,13 @@ function mediaNavUp() {
   const filesSection = document.getElementById('media-files-section');
   if (folders.innerHTML && !filesSection.innerHTML) { bc.style.display = 'none'; return; }
   bc.style.display = 'none';
-  const pg = pages['media'];
-  if (pg) pg.show();
+  const loading = document.getElementById('media-loading');
+  const empty = document.getElementById('media-empty');
+  loading.style.display = 'block';
+  empty.style.display = 'none';
+  folders.innerHTML = '';
+  filesSection.innerHTML = '';
+  loadMediaTree(loading, empty, folders, filesSection);
 }
 
 registerPage('media', {
@@ -205,9 +211,11 @@ registerPage('media', {
     foldersEl.innerHTML = '';
     filesEl.innerHTML = '';
     breadcrumb.style.display = 'none';
-    this._load(loading, empty, foldersEl, filesEl);
-  },
-  _load: async (loading, empty, foldersEl, filesEl) => {
+    loadMediaTree(loading, empty, foldersEl, filesEl);
+  }
+});
+
+async function loadMediaTree(loading, empty, foldersEl, filesEl) {
     try {
       const data = await apiGet('/media/tree');
       loading.style.display = 'none';
@@ -220,7 +228,7 @@ registerPage('media', {
       if (folders.length > 0) {
         foldersEl.innerHTML = '<div class="section-title">Folders</div><div class="row-list">' +
           folders.map(f =>
-            '<div class="folder-row" onclick="mediaOpenFolder(\'' + f.path.replace(/'/g, "\\'") + '\')">' +
+            '<div class="folder-row" onclick="mediaOpenFolder(\'' + escStr(f.path) + '\')">' +
               '<span style="font-size:20px">&#128193;</span>' +
               '<div style="flex:1">' +
                 '<div style="font-size:14px;font-weight:500">' + escapeHtml(f.name) + '</div>' +
@@ -240,8 +248,7 @@ registerPage('media', {
       empty.innerHTML = '<div style="color:#f87171;font-size:14px">Error: ' + escapeHtml(err.message) + '</div>';
       empty.style.display = 'block';
     }
-  }
-});
+}
 
 /* ═══════════════════════════════════════════════
    PAGE: UPLOAD
@@ -389,7 +396,7 @@ async function scanNetworks() {
     }
     results.innerHTML = '<div class="row-list">' +
       nets.map(n =>
-        '<div class="row" onclick="showConnectForm(\'' + n.ssid.replace(/'/g, "\\'") + '\')">' +
+        '<div class="row" onclick="showConnectForm(\'' + escStr(n.ssid) + '\')">' +
           '<div class="row-icon" style="background:var(--grad-network)">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:16px;height:16px"><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg>' +
           '</div>' +
@@ -636,6 +643,39 @@ registerPage('change-password', {
 });
 
 /* ═══════════════════════════════════════════════
+   PAGE: ABOUT
+   ═══════════════════════════════════════════════ */
+registerPage('about', {
+  async show() { await loadAbout(); }
+});
+
+async function loadAbout() {
+  try {
+    var sys = await apiGet('/system/info');
+    document.getElementById('about-hostname').textContent = sys.hostname;
+    var d = Math.floor(sys.uptime_seconds / 86400);
+    var h = Math.floor((sys.uptime_seconds % 86400) / 3600);
+    var m = Math.floor((sys.uptime_seconds % 3600) / 60);
+    document.getElementById('about-uptime').textContent = (d > 0 ? d + 'd ' : '') + h + 'h ' + m + 'm';
+  } catch (e) { /* silent */ }
+
+  try {
+    var net = await apiGet('/network/status');
+    document.getElementById('about-ap-iface').textContent = net.ap_interface;
+    document.getElementById('about-client-iface').textContent = net.client_interface;
+  } catch (e) { /* silent */ }
+
+  try {
+    var upd = await apiGet('/system/update-check');
+    document.getElementById('about-version').textContent = upd.local_version || 'dev';
+  } catch (e) {
+    document.getElementById('about-version').textContent = 'dev';
+  }
+
+  document.getElementById('about-installer').textContent = 'Trarou User';
+}
+
+/* ═══════════════════════════════════════════════
    PAGE: AI CHAT
    ═══════════════════════════════════════════════ */
 let aiMessages = [];
@@ -651,25 +691,25 @@ async function refreshAiStatus() {
   try {
     var data = await apiGet('/ai/status');
     var badge = document.getElementById('ai-backend-badge');
+    var modelInfo = document.getElementById('ai-model-info');
     var backend = data.active_backend;
     var labels = { ollama: 'Local', browser: 'Browser' };
     var colors = { ollama: 'green', browser: 'orange' };
     badge.innerHTML = '<span class="badge badge-' + (colors[backend] || 'orange') + '" style="font-size:11px">' + (labels[backend] || backend) + '</span>';
 
-    // Show model info
     var models = data.ollama ? data.ollama.models : [];
     var rec = data.recommendation || {};
-    var modelInfo = document.getElementById('ai-model-info');
     if (modelInfo) {
       if (models.length > 0) {
         modelInfo.innerHTML = '<span style="font-size:11px;color:var(--text-3)">Model: ' + models[0] + '</span>';
-      } else if (rec.recommended) {
-        modelInfo.innerHTML = '<span style="font-size:11px;color:var(--text-3)">Recommended: ' + rec.recommended + ' (' + rec.description + ')</span>' +
+      } else if (data.ollama && data.ollama.available && rec.recommended) {
+        modelInfo.innerHTML = '<span style="font-size:11px;color:var(--text-3)">Recommended: ' + rec.recommended + '</span>' +
           '<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;margin-left:8px" onclick="autoSetupAi()">Install</button>';
+      } else if (!data.ollama || !data.ollama.available) {
+        modelInfo.innerHTML = '<span style="font-size:11px;color:var(--text-3)">Install Ollama for local AI: <code>curl -fsSL https://ollama.com/install.sh | sh</code></span>';
       }
     }
 
-    // Show model management if admin
     var mgmt = document.getElementById('ai-model-mgmt');
     if (mgmt && Auth.isAdmin && models.length > 0) {
       var html = '<div class="row-list">';
@@ -794,7 +834,7 @@ async function streamServerAI(bubble) {
   var fullText = '';
 
   try {
-    var res = await fetch(API + '/api/ai/chat', {
+    var res = await fetch(API + '/ai/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1047,7 +1087,7 @@ function renderShortcuts() {
   }
   var html = '';
   userShortcuts.forEach(function(s, i) {
-    html += '<div class="row" onclick="window.open(\'' + escapeHtml(s.url) + '\', \'_blank\')" style="cursor:pointer">';
+    html += '<div class="row" onclick="window.open(\'' + escStr(s.url) + '\', \'_blank\')" style="cursor:pointer">';
     html += '<div style="font-size:24px;width:36px;text-align:center">' + (s.icon || '&#128241;') + '</div>';
     html += '<div class="row-body"><div class="row-title" style="font-size:13px">' + escapeHtml(s.name) + '</div>';
     html += '<div class="row-sub">' + escapeHtml(s.url) + '</div></div>';

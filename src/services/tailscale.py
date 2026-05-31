@@ -68,11 +68,16 @@ class TailscaleService:
 
     async def up(self, auth_key: Optional[str] = None, advertise_routes: bool = True,
                  accept_routes: bool = True, advertise_exit_node: bool = False) -> dict:
+        import shlex
         from config import settings
 
         flags = []
         if auth_key:
-            flags.append(f"--authkey={auth_key}")
+            # Validate auth key format (alphanumeric + hyphens only)
+            import re
+            if not re.match(r'^[a-zA-Z0-9\-]+$', auth_key):
+                return {"status": "error", "message": "Invalid auth key format"}
+            flags.append(f"--authkey={shlex.quote(auth_key)}")
         if accept_routes:
             flags.append("--accept-routes")
         if advertise_exit_node:
@@ -80,7 +85,7 @@ class TailscaleService:
 
         if advertise_routes:
             subnet = settings.CAPTIVE_PORTAL_SUBNET
-            flags.append(f"--advertise-routes={subnet}")
+            flags.append(f"--advertise-routes={shlex.quote(subnet)}")
 
         await self._run("sysctl -w net.ipv4.ip_forward=1")
         await self._run("sysctl -w net.ipv6.conf.all.forwarding=1")
@@ -91,10 +96,15 @@ class TailscaleService:
         login_url = None
         for line in (out + err).splitlines():
             if "https://login.tailscale.com" in line or "https://tailscale.com" in line:
-                match = re.search(r'https://\S+', line)
+                match = re.search(r'https://login\.tailscale\.com/\S+', line)
+                if not match:
+                    match = re.search(r'https://tailscale\.com/\S+', line)
                 if match:
-                    login_url = match.group(0).rstrip('.')
-                    break
+                    url = match.group(0).rstrip('.')
+                    # Validate URL format
+                    if re.match(r'^https://(login\.)?tailscale\.com/[a-zA-Z0-9/_\-?=&%]+$', url):
+                        login_url = url
+                        break
 
         if login_url:
             return {"status": "needs_auth", "login_url": login_url}
@@ -113,8 +123,13 @@ class TailscaleService:
         return {"status": "error", "message": err}
 
     async def set_exit_node(self, ip: Optional[str] = None) -> dict:
+        import shlex
+        import re
         if ip:
-            rc, out, err = await self._run(f"tailscale set --exit-node={ip} --exit-node-allow-lan-access")
+            # Validate IP format
+            if not re.match(r'^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$', ip):
+                return {"status": "error", "message": "Invalid IP address format"}
+            rc, out, err = await self._run(f"tailscale set --exit-node={shlex.quote(ip)} --exit-node-allow-lan-access")
         else:
             rc, out, err = await self._run("tailscale set --exit-node=")
 
